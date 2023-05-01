@@ -30,9 +30,9 @@ class Gui:
         self.calibration_text[2].set(f'Calibrate port 2 {self.durations[2]}')
         myFont = font.Font(size=16)
         buttons = np.array(
-            [['ES024', 'ES027', 'ES030'],
-             ['ES025', 'ES028', 'ES031'],
-             ['ES026', 'ES029', 'ES032'],
+            [['SZ026', 'SZ027', 'SZ028'],
+             ['SZ029', 'SZ030', 'testmouse'],
+             ['testmouse', 'testmouse', 'testmouse'],
              ['check_scp', 'check_ir', 'testmouse'],
              ['-.0005', self.calibration_text[1], '+.0005'],
              ['-.0005', self.calibration_text[2], '+.0005']])

@@ -108,11 +108,11 @@ def perform(task):
 class Session:
     def __init__(self, mouse):
         self.ip = '192.168.137.1'
-        self.user = 'Shichen'
+        self.user = 'Shichen Zhang'
         self.password = 'shuler'
         self.mouse = mouse
         self.ssh_path = os.path.join('OneDrive - Johns Hopkins', 'ShulerLab', 'behavior_code', 'data', self.mouse)
-        self.data_send_path = os.path.join('C:', 'Users','Shichen', self.ssh_path)
+        self.data_send_path = os.path.join('C:', 'Users','Shichen Zhang', self.ssh_path)
 
         # error with 0: re.compile('[Pp]assword: ') means you need to update the ip address. open command prompt and
         # type ipconfig/all then press enter. Find the ip address starting with 10 and update it here

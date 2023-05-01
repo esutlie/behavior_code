@@ -99,6 +99,7 @@ def main(mouse, to_run, forgo=False, forced_trials=False):
     start_prob = 1
     session_time = 18
     mouse_settings = {
+        'default': [cumulative, start_prob, session_time],
         'testmouse': [cumulative, start_prob, session_time],
         'ES024': [cumulative, start_prob, session_time],  # reward level, starting prop, session time, [intervals].
         'ES025': [cumulative, start_prob, session_time],  # reward level, starting prop, session time, [intervals].
@@ -111,12 +112,15 @@ def main(mouse, to_run, forgo=False, forced_trials=False):
         'ES032': [cumulative, start_prob, session_time],  # reward level, starting prop, session time, [intervals].
     }
 
-    if mouse not in mouse_settings.keys():
-        raise MouseSettingsError('This mouse isn\'t defined in the settings')
+
     session = Session(mouse)  # Start a new session for the mouse
 
     try:
-        to_run(session, *mouse_settings[mouse], forgo=forgo, forced_trials=forced_trials)  # Run the task
+        if mouse not in mouse_settings.keys():
+            print('This mouse isn\'t defined in the settings')
+            to_run(session, *mouse_settings['default'], forgo=forgo, forced_trials=forced_trials)  # Run the task
+        else:
+            to_run(session, *mouse_settings[mouse], forgo=forgo, forced_trials=forced_trials)  # Run the task
         session.smooth_finish = True
         print('smooth finish')
     except KeyboardInterrupt:  # Catch if the task is stopped via ctrl-C or the stop button
