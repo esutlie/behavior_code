@@ -108,7 +108,7 @@ def perform(task):
 class Session:
     def __init__(self, mouse):
         self.ip = '192.168.137.1'
-        self.user = 'Shichen'
+        self.user = 'Shichen Zhang'
         self.password = 'shuler'
         self.mouse = mouse
         self.ssh_path = os.path.join('OneDrive - Johns Hopkins', 'ShulerLab', 'behavior_code', 'data', self.mouse)
