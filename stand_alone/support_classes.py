@@ -47,7 +47,7 @@ def ssh(host, cmd, user, password, timeout=30, bg_run=False):
     if bg_run:
         options += ' -f'
 
-    ssh_cmd = 'ssh \'%s\'@%s %s \'%s\'' % (user, host, options, cmd)
+    ssh_cmd = 'ssh %s@%s %s \'%s\'' % (user, host, options, cmd)
     print(ssh_cmd)
     child = pexpect.spawnu(ssh_cmd, timeout=timeout)
     child.expect(['[Pp]assword: '])
@@ -66,7 +66,7 @@ def scp(host, filename, destination, user, password, timeout=30, bg_run=False, r
         options += ' -r'
     if bg_run:
         options += ' -f'
-    scp_cmd = 'scp %s %s \'%s\'@%s:\'"%s"\'' % (options, filename, user, host, os.path.join(destination, filename))
+    scp_cmd = 'scp %s %s %s@%s:\'"%s"\'' % (options, filename, user, host, os.path.join(destination, filename))
     print(scp_cmd)
     if cmd:
         return scp_cmd
@@ -107,9 +107,10 @@ def perform(task):
 
 class Session:
     def __init__(self, mouse):
+        #self.ip = '10.203.237.186'
         self.ip = '192.168.137.1'
-        self.user = 'Shichen Zhang'
-        self.password = 'shuler'
+        self.user = 'Shichen'
+        self.password = 'shuler_914WBSB'
         self.mouse = mouse
         self.ssh_path = os.path.join('OneDrive - Johns Hopkins', 'ShulerLab', 'behavior_code', 'data', self.mouse)
         self.data_send_path = os.path.join('C:', 'Users','Shichen', self.ssh_path)
