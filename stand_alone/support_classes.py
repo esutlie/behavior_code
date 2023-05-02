@@ -107,8 +107,8 @@ def perform(task):
 
 class Session:
     def __init__(self, mouse):
-        self.ip = '10.203.237.186'
-        #self.ip = '192.168.137.1'
+        #self.ip = '10.203.237.186'
+        self.ip = '192.168.137.1'
         self.user = 'Shichen'
         self.password = 'shuler_914WBSB'
         self.mouse = mouse
