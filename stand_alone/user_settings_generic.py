@@ -16,6 +16,10 @@ def get_user_info():
             'MOUSE_NAME': 'TASK_NAME',
             'testmouse': 'TASK_NAME',
         },
+        'mouse_swap_assignments': {
+            'MOUSE_NAME': False,
+            'testmouse': False,
+        },
         'mouse_colors': {
             'MOUSE_NAME': 1,
             'testmouse': 1,

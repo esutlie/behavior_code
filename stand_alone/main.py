@@ -1,5 +1,6 @@
 from support_classes import *
-from tasks import *
+# from tasks import *
+from tasks_RK import multireward_task
 from timescapes import *
 import random
 
@@ -36,68 +37,76 @@ import random
 #     session.start([task1])
 
 
-def cued_forgo(session, reward_level, starting_prob, session_length, forgo=False, forced_trials=True):
+def multi_reward(session, reward_level, starting_prob, session_length, swap_port=False, swap_block = False):
     print(reward_level)
     print(starting_prob)
     print(session_length)
-    task_structure = cued_forgo_task
+    task_structure = multireward_task
 
-    if forgo:
-        task_name = 'cued_forgo'
-        print('cued forgo')
+    # rates = [.4, .8, .4, .8, .4, .8]
+    # if np.random.random() > .5:
+    #     rates.reverse()
+
+    # rates = [.4, .8] #swap_block random is session by session change, swap block trial is trial by trial change
+    if swap_block == "random":
+        rates = [random.choice([0.4, 0.8])]
+        print (rates)
+    elif swap_block == "trial":
+        rates = [.4, .8, .4, .8, .4, .8]
+        if np.random.random() > .5:
+            rates.reverse()
     else:
-        task_name = 'cued_no_forgo'
-        print('cued bg without forgo option')
+        rates = [0.4] if not swap_block else [0.8] #0.4 if swap_block is false, 0.8 if true
+    #     rates.reverse()
 
-    if forced_trials:
-        task_name = task_name + '_forced'
-        print('forced trials included')
-
-    rates = [.4, .8, .4, .8, .4, .8]
-    if np.random.random() > .5:
-        rates.reverse()
+    exp_port = 1 if not swap_port else 2
+    bg_port = 2 if not swap_port else 1
+    print(f'exp_port = {exp_port}')
+    print(f'bg_port = {bg_port}')
     background_dist = {'distribution': 'background',
                        'rates': rates,
                        'duration': 5,
-                       'port_num': 2}
+                       'port_num': bg_port}
     print(background_dist['rates'])
     exp_dist = {'distribution': exp_decreasing,
                 'cumulative': reward_level,
                 'starting_probability': starting_prob,
-                'port_num': 1}
+                'port_num': exp_port}
     ports = {'exp': Port(exp_dist['port_num'], dist_info=exp_dist),
              'background': Port(background_dist['port_num'], dist_info=background_dist)}
-    task1 = Task(session, name=task_name, structure=task_structure, ports=ports,
-                 maximum=session_length, limit='time', forgo=forgo, forced_trials=forced_trials)
+    task1 = Task(session, name='multi_reward', structure=task_structure, ports=ports,
+                 maximum=session_length, limit='time')
     session.start([task1])
 
 
-def single_reward(session, reward_level, starting_prob, session_length, forgo=False, forced_trials=True):
+def single_reward(session, reward_level, starting_prob, session_length, swap_port=False, swap_block= False):
     reward_level = 0.5994974874371859  # cumulative for an 8 reward version
     starting_prob = 0.1301005025125628
     print(reward_level)
     print(starting_prob)
     print(session_length)
     task_structure = single_reward_task
-
+    
     task_name = 'single_reward'
-
+    
     rates = [.4, .8, .4, .8, .4, .8]
     if np.random.random() > .5:
         rates.reverse()
+    exp_port = 1 if not swap_port else 2
+    bg_port = 2 if not swap_port else 1
     background_dist = {'distribution': 'background',
-                       'rates': rates,
-                       'duration': 5,
-                       'port_num': 2}
+                   'rates': rates,
+                   'duration': 5,
+                   'port_num': bg_port}
     print(background_dist['rates'])
     exp_dist = {'distribution': exp_decreasing,
-                'cumulative': reward_level,
-                'starting_probability': starting_prob,
-                'port_num': 1}
+            'cumulative': reward_level,
+            'starting_probability': starting_prob,
+            'port_num': exp_port}
     ports = {'exp': Port(exp_dist['port_num'], dist_info=exp_dist),
-             'background': Port(background_dist['port_num'], dist_info=background_dist)}
+         'background': Port(background_dist['port_num'], dist_info=background_dist)}
     task1 = Task(session, name=task_name, structure=task_structure, ports=ports,
-                 maximum=session_length, limit='time')
+             maximum=session_length, limit='time')
     session.start([task1])
 
 # def give_up_blocked(session, reward_level, starting_prob, session_length, forgo=True, forced_trials=False):
@@ -122,7 +131,8 @@ def single_reward(session, reward_level, starting_prob, session_length, forgo=Fa
 #     session.start([task1])
 
 
-def main(mouse, to_run, forgo=False, forced_trials=False):
+# def main(mouse, to_run, forgo=False, forced_trials=False, swap_port=False):
+def main(mouse, to_run, swap_port=False, swap_block = False): #swap port swaps BG/EXP, swap_block is the stage
     cumulative = 8
     start_prob = 1
     session_time = 18
@@ -135,9 +145,9 @@ def main(mouse, to_run, forgo=False, forced_trials=False):
 
     try:
         if mouse not in mouse_settings.keys():
-            to_run(session, *mouse_settings['default'], forgo=forgo, forced_trials=forced_trials)  # Run the task
+            to_run(session, *mouse_settings['default'], swap_port=swap_port, swap_block=swap_block)  # Run the task
         else:
-            to_run(session, *mouse_settings[mouse], forgo=forgo, forced_trials=forced_trials)  # Run the task
+            to_run(session, *mouse_settings[mouse], swap_port=swap_port, swap_block=swap_block)  # Run the task
         session.smooth_finish = True
         print('smooth finish')
     except KeyboardInterrupt:  # Catch if the task is stopped via ctrl-C or the stop button
@@ -149,6 +159,6 @@ def main(mouse, to_run, forgo=False, forced_trials=False):
 if __name__ == "__main__":
     # main('testmouse', cued_forgo, forgo=False, forced_trials=True)
     # main('ES024', cued_forgo, forgo=False, forced_trials=True)
-    main('ES030', cued_forgo, forgo=False, forced_trials=True)
+    main('ES030', multi_reward)
     # main('testmouse', give_up_blocked)
 

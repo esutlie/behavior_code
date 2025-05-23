@@ -12,20 +12,20 @@ import pexpect
 from user_settings import get_user_info
 import os
 
-info_dict = get_user_info(box=os.uname()[1])
+info_dict = get_user_info()
 
 # scp -r C:\Users\Elissa\GoogleDrive\Code\Python\behavior_code\stand_alone pi@elissapi0:\home\pi
 # scp C:\Users\Elissa\GoogleDrive\Code\Python\behavior_code\stand_alone\scp_rescue.py pi@elissapi1:\home\pi\behavior
 
 # scp -r "C:\Users\Shichen\OneDrive - Johns Hopkins\ShulerLab\behavior_code\stand_alone" pi@elissapi1:\home\pi\behavior1
 pastel_colors = ['#ffffcc', '#99ccff', '#cc99ff', '#ff99cc', '#ffcc99', '#ffffcc', '#99ffcc', '#ccffff', '#ccccff',
-                 '#ffccff', '#ffcccc', '#D3D3D3']
+                 '#ffccff', '#ffcccc', '#D3D3D3', '#f0a207']
 
 
 class Gui:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.geometry('2000x700')
+        self.root.geometry('960x360')
         self.root.title('BehaviorGui')
 
         with open('durations.pkl', 'rb') as f:
@@ -37,9 +37,11 @@ class Gui:
         myFont = font.Font(size=30)
         mouse_rows = len(info_dict['mouse_buttons'])
         self.mouse_assignments = info_dict['mouse_assignments']
+        self.port_swap_assignments = info_dict['port_swap_assignments']
+        self.block_swap_assignments = info_dict['block_swap_assignments']
         tasks = {
             'single_reward': single_reward,
-            'cued_forgo': cued_forgo
+            'multi_reward': multi_reward
         }
         for key in self.mouse_assignments.keys():
             self.mouse_assignments[key] = tasks[self.mouse_assignments[key]]
@@ -105,8 +107,10 @@ class Gui:
 
     def run_behavior(self, mouse):
         task = self.mouse_assignments[mouse]
+        swap_port = self.port_swap_assignments[mouse]
+        swap_block = self.block_swap_assignments[mouse]
         print(f"running {task} for {mouse}")
-        main(mouse, task, forgo=False, forced_trials=True)
+        main(mouse, task, swap_port=swap_port, swap_block=swap_block)
 
     def calibrate(self, port):
         print(f'calibrating port {port}')

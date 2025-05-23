@@ -42,7 +42,72 @@ def test(i):
     print('test ' + str(i))
 
 
-def ssh(host, cmd, user, password, timeout=30, bg_run=False):
+# def ssh(host, cmd, user, password, timeout=30, bg_run=False):
+#     """SSH'es to a host using the supplied credentials and executes a command.
+#     Throws an exception if the command doesn't return 0.
+#     bgrun: run command in the background"""
+#
+#     options = '-q -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -oPubkeyAuthentication=no'
+#     if bg_run:
+#         options += ' -f'
+#
+#     ssh_cmd = 'ssh %s@%s %s \'%s\'' % (user, host, options, cmd)
+#     print(ssh_cmd)
+#     child = pexpect.spawnu(ssh_cmd, timeout=timeout)
+#     child.expect([r'(?i).*password.*:'])
+#     child.sendline(password)
+#     child.expect(pexpect.EOF)
+#     child.close()
+
+
+# def scp(host, filename, destination, user, password, timeout=30, bg_run=False, recursive=False, cmd=False):
+#     """Scp's to a host using the supplied credentials and executes a command.
+#     Throws an exception if the command doesn't return 0.
+#     bgrun: run command in the background"""
+#
+#     options = '-q -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -oPubkeyAuthentication=no'
+#     if recursive:
+#         options += ' -r'
+#     if bg_run:
+#         options += ' -f'
+#     scp_cmd = 'scp %s %s %s@%s:\'"%s"\'' % (options, filename, user, host, os.path.join(destination, filename))
+#     password_prompt = rf"{user}@{host}'s password: "
+#     print(password_prompt)
+#     child = None
+#     status = 1
+#     print(scp_cmd)
+#     try:
+#         if cmd:
+#             return scp_cmd
+#         child = pexpect.spawnu(scp_cmd, timeout=timeout)  # spawnu for Python 3
+#         child.expect(password_prompt)
+#         child.sendline(password)
+#         child.expect(pexpect.EOF)
+#         child.close()
+#         status = child.exitstatus
+#     except Exception as e:
+#         print('scp didn\'t work the first time so we are trying again with different password')
+#         try:
+#             # scp_cmd2 = 'scp %s %s %s@%s:"%s"' % (options, filename, user, host, os.path.join(destination, filename))
+#             # print(scp_cmd2)
+#             # if cmd:
+#             #     return scp_cmd2
+#             child = pexpect.spawnu(scp_cmd, timeout=timeout)  # spawnu for Python 3
+#             child.expect([r"(?i).*password.*:?(\s*)"])
+#             child.sendline(password)
+#             child.expect(pexpect.EOF)
+#             child.close()
+#             status = child.exitstatus
+#         except Exception as e_2:
+#             print(f"still didnt work: {e_2}")
+#             status = 1
+#     if status == 0:
+#         print("file transfer completed!")
+#     else:
+#         print("transfer failed.")
+#     return status
+
+def ssh(host, cmd, user, password, timeout=60, bg_run=False):
     """SSH'es to a host using the supplied credentials and executes a command.
     Throws an exception if the command doesn't return 0.
     bgrun: run command in the background"""
@@ -54,12 +119,10 @@ def ssh(host, cmd, user, password, timeout=30, bg_run=False):
     ssh_cmd = 'ssh %s@%s %s \'%s\'' % (user, host, options, cmd)
     print(ssh_cmd)
     child = pexpect.spawnu(ssh_cmd, timeout=timeout)
-    child.expect(['[Pp]assword: '])
+    child.expect([r"(?i).*password.*:?(\s*)"])
     child.sendline(password)
     child.expect(pexpect.EOF)
     child.close()
-
-
 def scp(host, filename, destination, user, password, timeout=30, bg_run=False, recursive=False, cmd=False):
     """Scp's to a host using the supplied credentials and executes a command.
     Throws an exception if the command doesn't return 0.
@@ -95,7 +158,6 @@ def scp(host, filename, destination, user, password, timeout=30, bg_run=False, r
         elif child.exitstatus == 0:
             print('worked!')
     return child.exitstatus
-
 
 def sync_stream(self):
     pin_map = {'session': 25,
@@ -142,7 +204,7 @@ class Session:
         self.data_write_path = "/data/" + self.mouse
         self.datetime = time.strftime("%Y-%m-%d_%H-%M-%S")
         self.filename = "data_" + self.datetime + ".txt"
-
+        self.isstarted = False
         self.halted = False
         self.smooth_finish = False
         GPIO.setmode(GPIO.BCM)
@@ -167,6 +229,7 @@ class Session:
         GPIO.output(self.camera_pin, GPIO.LOW)
 
     def start(self, task_list):
+        self.isstarted = True
         for val in self.sync_pins.values():
             GPIO.setup(val, GPIO.OUT)
             GPIO.output(val, GPIO.LOW)
@@ -190,10 +253,11 @@ class Session:
             perform(task)
 
     def log(self, string):  # Adds session time stamp to beginning of string and logs it
-        session_time = time.time() - self.start_time
-        new_line = str(session_time) + ',' + string + '\n'
-        # print(new_line)
-        self.f.write(new_line)
+        if self.isstarted:
+            session_time = time.time() - self.start_time
+            new_line = str(session_time) + ',' + string + '\n'
+            # print(new_line)
+            self.f.write(new_line)
 
     def end(self):
         self.log('nan,nan,nan,nan,setup,nan,0,session')
@@ -201,16 +265,21 @@ class Session:
         os.system('sudo chmod o-w ' + self.filename)
         mkdir_command = 'if not exist "%s" mkdir "%s"' % (
             self.ssh_path.replace('/', '\\'), self.ssh_path.replace('/', '\\'))
-        ssh(self.ip, mkdir_command, self.user, self.password)
-        res = scp(self.ip, self.filename, self.data_send_path, self.user, self.password)
-        if not res:
-            print('\nSuccessful file transfer to "%s"\nDeleting local file from pi.' % self.data_send_path)
-            os.remove(self.filename)
-        else:
-            print('connection back to desktop timed out')
-        GPIO.cleanup()
-        os.chdir(os.path.join(os.getcwd(), '..', '..'))
-        print('\nFile closed and clean up complete')
+        try:
+            ssh(self.ip, mkdir_command, self.user, self.password)
+            res = scp(self.ip, self.filename, self.data_send_path, self.user, self.password)
+            if res == 0:
+                print('\nSuccessful file transfer to "%s"\nDeleting local file from pi.' % self.data_send_path)
+                os.remove(self.filename)
+        except Exception as e:
+            res = 1
+            print('scp failed with the following error')
+            print(e)
+        finally:
+            os.chdir(os.path.join(os.getcwd(), '..', '..'))
+            print('file location is back to the project root')
+            GPIO.cleanup()
+            print('\nFile closed and clean up complete')
         if self.halted:
             print('Session stopped early')
         elif self.smooth_finish:
@@ -323,7 +392,7 @@ class Port:
 
 class Task:
     def __init__(self, session, name='blank', structure=None, ports=None, limit='trials',
-                 maximum=None, forgo=True, forced_trials=False):
+                 maximum=None, forgo=False, forced_trials=True):
         print('Starting task: %s' % name)
         self.structure = structure
         self.port_dict = ports

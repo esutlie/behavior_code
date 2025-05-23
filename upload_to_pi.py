@@ -7,7 +7,7 @@ from user_info import get_user_info
 def upload_to_pi(pi_host_name, durations=False):
     local_path = os.path.join(os.getcwd(), "stand_alone")
     pi_user_name = 'pi'
-    remote_path = '/home/pi/behavior'
+    remote_path = '/home/pi/rie_behavior'
     password = 'shuler'
     # command = f'scp -r {os.path.join(local_path, "stand_alone")} {pi_user_name}@{pi_host_name}:{remote_path}'
     ssh = paramiko.SSHClient()
@@ -51,6 +51,7 @@ def ping_host(pi_host_name):
     try:
         ssh.connect(pi_host_name, username=pi_user_name, password=password, timeout=1)
         ssh.close()
+        print(f'{pi_host_name} ping host succeeded')
         return True
     except Exception as e:
         ssh.close()
@@ -61,6 +62,11 @@ def ping_host(pi_host_name):
 
 if __name__ == '__main__':
     info_dict = get_user_info()
+    # for name in ['shichenpi2']:
     for name in info_dict['pi_names']:
-        upload_to_pi(name, durations=False)
-        reset_time(name)
+        ping_host(name)
+        try:
+            upload_to_pi(name, durations=False)
+            reset_time(name)
+        except Exception as e:
+            print(f'{name}: {e}')
