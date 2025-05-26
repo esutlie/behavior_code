@@ -233,8 +233,8 @@ class Port:
                 durations = pickle.load(f)
             self.base_duration = durations[name]
 
-        pins = {1: [4, 27, 17, 9],
-                2: [18, 24, 23, 11]}
+        pins = {2: [4, 27, 17, 9],
+                1: [18, 24, 23, 11]}
         self.name = name
         [self.led_pin, self.ir_head_pin, self.ir_lick_pin, self.sol_pin] = pins[name]
         # self.led_pin = led_pin
