@@ -14,6 +14,8 @@ from labellines import labelLine, labelLines
 from user_info import get_user_info
 import shutil
 from datetime import datetime
+import matplotlib as mpl
+mpl.rcParams['figure.dpi'] = 300
 
 info_dict = get_user_info()
 initials = info_dict['initials']
@@ -34,6 +36,23 @@ def get_today_filepaths(days_back=0):
                 dif = datetime.today() - file_date
                 if dif.days <= days_back:
                     # if f[5:15] == time.strftime("%Y-%m-%d"):
+                    file_paths.append(os.path.join(mouse, f))
+    return file_paths
+
+
+def get_dateranged_filepaths(start_date, end_date):
+    print(f"Start date: {start_date}")
+    print(f"End date: {end_date}")
+    file_paths = []
+    for root, dirs, filenames in walk(data_dir):
+        if len(dirs) == 0 and os.path.basename(root)[:2] in initials:
+            mouse = os.path.basename(root)
+            for f in filenames:
+                if f == 'desktop.ini':
+                    continue
+                file_date = datetime.strptime(f[5:-4], '%Y-%m-%d_%H-%M-%S').date()
+                # file_date = date(int(f[5:9]), int(f[10:12]), int(f[13:15]))
+                if start_date <= file_date <= end_date:
                     file_paths.append(os.path.join(mouse, f))
     return file_paths
 
@@ -109,7 +128,7 @@ def gen_data(file_paths, select_mouse=None, return_info=False):
             try:
                 data = data_reduction(data)
 
-                #port info as a row
+                # port info as a row
                 port_info_row = [{
                     'key': meta_data['port1_info']['distribution'],
                     'port': meta_data['port1_info']['port_num']
@@ -121,7 +140,7 @@ def gen_data(file_paths, select_mouse=None, return_info=False):
                      }
                 ]
 
-                #Added port info at the end of the dataframe
+                # Added port info at the end of the dataframe
                 portinfo_rows_df = pd.DataFrame(port_info_row).reindex(columns=data.columns)
                 data = pd.concat([data, portinfo_rows_df], ignore_index=True)
 
@@ -202,7 +221,7 @@ def consumption_time(df):
     return consumption_df
 
 
-def calculate_premature_leave(df, threshold=1.0): #trials with premature leave
+def calculate_premature_leave(df, threshold=1.0):  # trials with premature leave
     bgportassignment = df.loc[df['key'] == 'background', 'port'].iloc[-1]
     premature_leave_trials = 0  # Counter for trials with premature leave
     blocks = df.phase.dropna().unique()
@@ -214,9 +233,9 @@ def calculate_premature_leave(df, threshold=1.0): #trials with premature leave
         for trial in block_data.trial.unique():
             if pd.isna(trial):
                 continue  # Skip invalid trials
-            trial_data = df[df.trial == trial] # Filter data for the current trial
+            trial_data = df[df.trial == trial]  # Filter data for the current trial
             bg_on_times = trial_data[(trial_data['key'] == 'trial') &
-                                      (trial_data['value'] == 1)].session_time.values
+                                     (trial_data['value'] == 1)].session_time.values
             if len(bg_on_times) == 0:
                 continue
             bg_start = bg_on_times[0]
@@ -226,22 +245,24 @@ def calculate_premature_leave(df, threshold=1.0): #trials with premature leave
             if len(bg_off_times) == 0:  # Check if no BG ON recorded
                 continue
             bg_end = bg_off_times[0]
-            bg_head_out_times = trial_data[(trial_data['key'] == 'head') & # Extract head-out and head-in times while BG port is active
-                                        (trial_data['port'] == bgportassignment) &
-                                        (trial_data['value'] == 0) &
-                                        (trial_data['session_time'] >= bg_start) &
-                                        (trial_data['session_time'] < bg_end)].session_time.values
+            bg_head_out_times = trial_data[
+                (trial_data['key'] == 'head') &  # Extract head-out and head-in times while BG port is active
+                (trial_data['port'] == bgportassignment) &
+                (trial_data['value'] == 0) &
+                (trial_data['session_time'] >= bg_start) &
+                (trial_data['session_time'] < bg_end)].session_time.values
             bg_head_in_times = trial_data[(trial_data['key'] == 'head') &
-                                       (trial_data['port'] == bgportassignment) &
-                                       (trial_data['value'] == 1) &
-                                       (trial_data['session_time'] >= bg_start) &
-                                       (trial_data['session_time'] < bg_end)].session_time.values
-            for head_out in bg_head_out_times: # Check for premature leave: head-out without a valid head-in within threshold
+                                          (trial_data['port'] == bgportassignment) &
+                                          (trial_data['value'] == 1) &
+                                          (trial_data['session_time'] >= bg_start) &
+                                          (trial_data['session_time'] < bg_end)].session_time.values
+            for head_out in bg_head_out_times:  # Check for premature leave: head-out without a valid head-in within threshold
                 if not any((head_in > head_out) and (head_in - head_out) <= threshold for head_in in bg_head_in_times):
                     premature_leave_trials += 1  # Flag this trial as a premature leave
                     break  # Stop checking further head-outs in this trial
         premature_leave_rate = (premature_leave_trials / block_total_trials)
-        results.append({"block": block,"premature leave numbers":premature_leave_trials, "premature leave rate": premature_leave_rate})
+        results.append({"block": block, "premature leave numbers": premature_leave_trials,
+                        "premature leave rate": premature_leave_rate})
     premature_leave_df = pd.DataFrame(results)
     return premature_leave_df
 
@@ -290,7 +311,7 @@ def get_entry_exit(df, trial):
     # port2 = df.port == 2
 
     trial_start = df[is_trial & start & (df.key == 'trial')].session_time.values[0]
-    trial_middle = df[is_trial & end & (df.key == 'LED') & bgport].session_time.values[0] #head in to EXP, bg LED off
+    trial_middle = df[is_trial & end & (df.key == 'LED') & bgport].session_time.values[0]  # head in to EXP, bg LED off
     trial_end = df[is_trial & end & (df.key == 'trial')].session_time.values[0]
 
     bg_entries = df[is_trial & bgport & start & (df.key == 'head')].session_time.to_numpy()
@@ -309,9 +330,9 @@ def get_entry_exit(df, trial):
                    (df.session_time > trial_middle)].session_time.to_numpy()
 
     if not (len(exp_entries) == 0 and len(exp_exits) == 0):
-        if len(exp_entries) == 0: #only exp out
+        if len(exp_entries) == 0:  # only exp out
             exp_entries = np.concatenate([[trial_middle], exp_entries])
-        if len(exp_exits) == 0: #only exp in
+        if len(exp_exits) == 0:  # only exp in
             exp_exits = np.concatenate([exp_exits, [trial_end]])
 
         if exp_entries[0] > exp_exits[0]:
@@ -324,7 +345,7 @@ def get_entry_exit(df, trial):
     early_exp_exits = df[is_trial & expport & end & (df.key == 'head') &
                          (df.session_time < trial_middle)].session_time.to_numpy()
 
-    if not (len(early_exp_entries) == 0 and len(early_exp_exits) == 0): #any early exp in/out
+    if not (len(early_exp_entries) == 0 and len(early_exp_exits) == 0):  # any early exp in/out
         if len(early_exp_entries) == 0:
             early_exp_entries = np.concatenate([[trial_start], early_exp_entries])
         if len(early_exp_exits) == 0:
@@ -380,6 +401,7 @@ def clean_entries_exits(entries, exits):
             x_idx += 1  # Skip unmatched exits
 
     return valid_entries, valid_exits
+
 
 def percent_engaged(df):
     try:
@@ -468,7 +490,7 @@ def percent_engaged(df):
 
         return engaged_df
     except Exception as e:
-        print ("Error in function.")
+        print("Error in function.")
         raise
 
 
@@ -516,16 +538,74 @@ def merge_old_trials(session):
     return session
 
 
-def simple_plots(select_mouse=None):
+def simple_plots(select_mouse=None, date_selected_by='days_back', **kwargs):
+    """
+    Retrieves filepaths based on the method specified by date_selected_by.
+
+    Args:
+        date_selected_by (str): Method to select files.
+                                 'days_back' - uses 'days_back' kwarg.
+                                 'range' - uses 'start_date' and 'end_date' kwargs.
+        **kwargs: Arbitrary keyword arguments.
+                  Expected for 'days_back': days_back (int)
+                  Expected for 'range': start_date (datetime.date or str 'YYYY-MM-DD'),
+                                        end_date (datetime.date or str 'YYYY-MM-DD')
+
+    Returns:
+        list: A list of filepaths, or None if an error occurs.
+    """
     plot_single_mouse_plots = True
-    save_folder = "C:\\Users\\Shichen\\OneDrive - Johns Hopkins\\ShulerLab\\Rie_behavior\\summary_graphs"
+    save_folder = "C:\\Users\\Shichen\\OneDrive - Johns Hopkins\\ShulerLab\\behavior_code\\summary_graphs"
+
     if select_mouse is None:
         dif = date.today() - start_date
         data = gen_data(get_today_filepaths(days_back=dif.days), select_mouse=select_mouse)
         info = gen_data(get_today_filepaths(days_back=dif.days), select_mouse=select_mouse, return_info=True)
     else:
-        data = gen_data(get_today_filepaths(days_back=1000), select_mouse=select_mouse)
-        info = gen_data(get_today_filepaths(days_back=1000), select_mouse=select_mouse, return_info=True)
+        if date_selected_by == 'days_back':
+            data = gen_data(get_today_filepaths(days_back=1000), select_mouse=select_mouse)
+            info = gen_data(get_today_filepaths(days_back=1000), select_mouse=select_mouse, return_info=True)
+        elif date_selected_by == 'range':
+            start_date_input = kwargs.get('start_date')
+            end_date_input = kwargs.get('end_date')
+            if start_date_input is None or end_date_input is None:
+                print("Error: 'start_date' and 'end_date' arguments are required when date_selected_by='range'.")
+                return None
+            try:
+                # Convert string dates to datetime.date objects if they are strings
+                if isinstance(start_date_input, str):
+                    start_date_obj = datetime.strptime(start_date_input, '%Y-%m-%d').date()
+                elif isinstance(start_date_input, datetime):  # if it's a datetime object
+                    start_date_obj = start_date_input.date()
+                elif hasattr(start_date_input, 'date'):  # for pandas Timestamp
+                    start_date_obj = start_date_input.date()
+                else:  # assume it's already a date object
+                    start_date_obj = start_date_input
+                if isinstance(end_date_input, str):
+                    end_date_obj = datetime.strptime(end_date_input, '%Y-%m-%d').date()
+                elif isinstance(end_date_input, datetime):
+                    end_date_obj = end_date_input.date()
+                elif hasattr(end_date_input, 'date'):
+                    end_date_obj = end_date_input.date()
+                else:
+                    end_date_obj = end_date_input
+                if start_date_obj > end_date_obj:
+                    print("Error: start_date cannot be after end_date.")
+                data = gen_data(get_dateranged_filepaths(start_date_obj, end_date_obj), select_mouse=select_mouse)
+                info = gen_data(get_dateranged_filepaths(start_date_obj, end_date_obj), select_mouse=select_mouse,
+                                return_info=True)
+            except ValueError as ve:
+                print(
+                    f"Error processing date for 'range' selection: {ve}. Ensure dates are 'YYYY-MM-DD' strings or date objects.")
+                return None
+            except Exception as e:
+                print(f"An error occurred in get_dateranged_filepaths: {e}")
+                return None
+        else:
+            print(f"Error: Unknown value for date_selected_by: '{date_selected_by}'. "
+                  "Allowed values are 'days_back' or 'range'.")
+            return None
+
     block_leaves_last10 = pd.DataFrame()
     for mouse in data.keys():
         if select_mouse is not None and mouse not in select_mouse:
@@ -537,7 +617,7 @@ def simple_plots(select_mouse=None):
         premature_leave = pd.DataFrame()
 
         for i, session in enumerate(data[mouse]):
-            print(mouse,' ', i)
+            print(mouse, ' ', i)
             if info[mouse][i]['task'] == 'cued_forgo_forced':
                 continue
             try:
@@ -559,9 +639,9 @@ def simple_plots(select_mouse=None):
                 reentry_df['session'] = [i] * len(reentry_df)
                 reentry = pd.concat([reentry, reentry_df])
 
-                premature_leave_df= calculate_premature_leave(session)
+                premature_leave_df = calculate_premature_leave(session)
                 premature_leave_df['session'] = [i] * len(premature_leave_df)
-                premature_leave = pd.concat([premature_leave,premature_leave_df])
+                premature_leave = pd.concat([premature_leave, premature_leave_df])
 
             except Exception as e:
                 print(f"Error processing session {i} for mouse {mouse}: {e}")
@@ -570,26 +650,32 @@ def simple_plots(select_mouse=None):
         engaged.sort_values('block', inplace=True)
         block_leaves.sort_values('block', inplace=True)
         if plot_single_mouse_plots:
-            fig, axes = plt.subplots(3, 2, figsize=[11, 12], layout="constrained")
-            sns.lineplot(data=block_leaves.reset_index(), x='session', y='leave time', hue='block', style = 'block',markers=True, ax=axes[0, 0],
+            fig, axes = plt.subplots(3, 2, figsize=[11, 8], layout="constrained")
+            sns.lineplot(data=block_leaves.reset_index(), x='session', y='leave time', hue='block', style='block',
+                         markers=True, ax=axes[0, 0],
                          palette='Set2')
             add_h_lines(data=block_leaves.reset_index(), x='session', y='leave time', hue='block', ax=axes[0, 0],
                         palette='Set2')
-            sns.lineplot(data=consumption.reset_index(), x='session', y='consumption time', hue='port', style = 'port', markers=True, ax=axes[0, 1],
+            sns.lineplot(data=consumption.reset_index(), x='session', y='consumption time', hue='port', style='port',
+                         markers=True, ax=axes[0, 1],
                          palette='Set1', estimator=np.median)
             add_h_lines(data=consumption.reset_index(), x='session', y='consumption time', hue='port', ax=axes[0, 1],
                         palette='Set1', estimator='median')
-            sns.lineplot(data=engaged.reset_index(), x='session', y='reward rate', hue='block', style = 'block', markers=True,ax=axes[1, 0],
+            sns.lineplot(data=engaged.reset_index(), x='session', y='reward rate', hue='block', style='block',
+                         markers=True, ax=axes[1, 0],
                          palette='Set2')
             add_h_lines(data=engaged.reset_index(), x='session', y='reward rate', hue='block', ax=axes[1, 0],
                         palette='Set2')
-            sns.lineplot(data=engaged.reset_index(), x='session', y='percent engaged', hue='block',style = 'block', markers=True, ax=axes[1, 1],
+            sns.lineplot(data=engaged.reset_index(), x='session', y='percent engaged', hue='block', style='block',
+                         markers=True, ax=axes[1, 1],
                          palette='Set2')
             add_h_lines(data=engaged.reset_index(), x='session', y='percent engaged', hue='block', ax=axes[1, 1],
                         palette='Set2')
-            sns.lineplot(data=premature_leave.reset_index(), x='session', y='premature leave rate', hue='block', style = 'block',markers=True,ax=axes[2, 0],
+            sns.lineplot(data=premature_leave.reset_index(), x='session', y='premature leave rate', hue='block',
+                         style='block', markers=True, ax=axes[2, 0],
                          palette='Set2')
-            add_h_lines(data=premature_leave.reset_index(), x='session', y='premature leave rate', hue='block', ax=axes[2, 0],
+            add_h_lines(data=premature_leave.reset_index(), x='session', y='premature leave rate', hue='block',
+                        ax=axes[2, 0],
                         palette='Set2')
             sns.lineplot(data=reentry.reset_index(), x='session', y='bg_reentry_index', hue='block', ax=axes[2, 1],
                          palette='Set2')
@@ -622,8 +708,9 @@ def simple_plots(select_mouse=None):
             print(f"Graph saved to: {save_path}")
             plt.show()
 
-        block_leaves_last10_df = block_leaves[(block_leaves.session >= block_leaves.session.max() - 10)].groupby('block')[
-            'leave time'].mean().reset_index()
+        block_leaves_last10_df = \
+            block_leaves[(block_leaves.session >= block_leaves.session.max() - 10)].groupby('block')[
+                'leave time'].mean().reset_index()
         block_leaves_last10_df['animal'] = mouse
         block_leaves_last10 = pd.concat([block_leaves_last10, block_leaves_last10_df])
 
@@ -635,7 +722,6 @@ def simple_plots(select_mouse=None):
     labelLines(plt.gca().get_lines(), align=True, zorder=2.5, fontsize=7, xvals=(0.3, 0.8))
     plt.ylim([0, 14.5])
     fig.show()
-
 
 
 def single_session(select_mouse=None, num_back=2):
@@ -656,7 +742,7 @@ def single_session(select_mouse=None, num_back=2):
 
 
 def session_summary(data, mouse, info):
-    base_save_folder= save_folder = "C:\\Users\\Shichen\\OneDrive - Johns Hopkins\\ShulerLab\\Rie_behavior\\each_session"
+    base_save_folder = save_folder = "C:\\Users\\Shichen\\OneDrive - Johns Hopkins\\ShulerLab\\behavior_code\\each_session"
     save_folder = os.path.join(base_save_folder, mouse)
     os.makedirs(save_folder, exist_ok=True)
     fig, [ax1, ax2] = plt.subplots(1, 2, figsize=[10, 10])
@@ -769,6 +855,7 @@ def session_summary(data, mouse, info):
     print(f"Graph saved to: {save_path}")
     plt.show()
 
+
 def session_summary_axis_settings(axes, max_trial):
     for ax in axes:
         ax.spines['right'].set_visible(False)
@@ -788,6 +875,8 @@ if __name__ == '__main__':
     # mice = ['SZ055', 'SZ056', 'SZ057', 'SZ058', 'SZ059']
     # mice = ['SZ036','SZ037','SZ038','SZ039','SZ041','SZ042','SZ043','SZ050','SZ051','SZ052','SZ055'] # all multi-reward mice
     # mice = ['SZ044', 'SZ045', 'SZ046', 'SZ047', 'SZ048', 'SZ053', 'SZ054', 'SZ058', 'SZ059'] # all single-reward mice
-    mice = ['SZ055']
-    single_session(mice)
-    simple_plots(mice)
+    mice = ['SZ036', 'SZ037', 'SZ038', 'SZ039', 'SZ042', 'SZ043']
+    # single_session(mice)
+    simple_plots(mice, date_selected_by='range', start_date='2023-11-28', end_date='2024-01-15')
+    mice = ['RK001', 'RK003', 'RK005', 'RK006']
+    simple_plots(mice, date_selected_by='range', start_date='2025-04-21', end_date='2025-05-10')
