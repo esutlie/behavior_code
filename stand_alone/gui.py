@@ -10,8 +10,9 @@ from time import sleep
 from main import *
 import pexpect
 from user_settings import get_user_info
+import os
 
-info_dict = get_user_info()
+info_dict = get_user_info(box=os.uname()[1])
 
 # scp -r C:\Users\Elissa\GoogleDrive\Code\Python\behavior_code\stand_alone pi@elissapi0:\home\pi
 # scp C:\Users\Elissa\GoogleDrive\Code\Python\behavior_code\stand_alone\scp_rescue.py pi@elissapi1:\home\pi\behavior

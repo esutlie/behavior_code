@@ -13,7 +13,7 @@ import shutil
 import json
 import tkinter as tk
 import tkinter.font as font
-from tkinter import ttk
+from threading import Thread, Event
 from functools import partial
 from openpyxl import load_workbook
 import fnmatch
@@ -38,11 +38,8 @@ def string_from_date(datetime_obj):
 
 def get_active_mice():
     return [
-        ['ES037'],
-        ['ES039'],
-        ['ES041', 'ES042', 'ES043', 'ES044'],
         ['ES045', 'ES046', 'ES047'],
-        ['ES048', 'ES049', 'ES050'],
+        ['ES058', 'ES059'],
     ]
 
 
@@ -112,34 +109,55 @@ def save_excel_to_log():
 
 
 class Scale:
-    def __init__(self):
+    def __init__(self, check_tare=False):
         self.port = 'COM3'
         self.BAUD = 9600
         self.PARITY = serial.PARITY_ODD
         self.STOP_BITS = serial.STOPBITS_ONE
         self.BYTE_SIZE = serial.SIXBITS
+        self.canceled = False
+        self.ser = serial.Serial(self.port, self.BAUD, self.BYTE_SIZE, self.PARITY, self.STOP_BITS)
+
+        self.root = tk.Tk()
+        self.root.geometry("300x200+2500+25")
+        self.root.title('Cancel Button')
+        self.button = tk.Button(
+            master=self.root,
+            text='Cancel\nWeighing',
+            width=50,
+            height=10,
+            bg="white",
+            fg="black",
+            font=("Arial", 25),
+            command=self.cancel)
+        self.button.pack()
+        self._job = None
+        self.weight = None
+        self.zeroed = False
+        self.weight_history = []
+        self.check_tare = check_tare
 
     def cleanse(self):
         try:
-            temp = serial.Serial(self.port, self.BAUD, self.BYTE_SIZE, self.PARITY, self.STOP_BITS)
+            # self.ser = serial.Serial(self.port, self.BAUD, self.BYTE_SIZE, self.PARITY, self.STOP_BITS)
             # temp = serial.Serial(port, baud, bytesize, parity, stopbits)
 
             # Flush both input/output buffer.
-            temp.reset_input_buffer()
-            temp.reset_output_buffer()
+            self.ser.reset_input_buffer()
+            self.ser.reset_output_buffer()
 
-            temp.close()
+            # self.ser.close()
         except:
             print('Unable to open/clean COM port')
             return
 
-    def get_weight(self, ser):
+    def get_weight(self):
         line = ''
-        ser.reset_input_buffer()
+        self.ser.reset_input_buffer()
         purge = True
         while True:
-            if ser.in_waiting > 0:
-                x = ser.read(1).decode()
+            if self.ser.in_waiting > 0:
+                x = self.ser.read(1).decode()
                 if len(x) and x not in [' ', '\'']:
                     line += x
                 if line[-1:] == '\n':
@@ -151,43 +169,152 @@ class Scale:
                         break
         return w
 
-    def weigh_one(self, check_tare=True):
+    def weigh_logic(self):
+        tic = time.time()
+        w = self.get_weight()
+
+        if not self.zeroed and -.2 < w < .2 and self.check_tare:
+            self.weight_history.append(w)
+            if len(self.weight_history) > 8 and np.std(np.array(self.weight_history)) < .1 and abs(
+                    np.mean(np.array(self.weight_history))) < .1:
+                self.zeroed = True
+                self.weight_history = []
+            if len(self.weight_history) > 10:
+                print(
+                    f'{np.mean(np.array(self.weight_history)):.2f} +- {np.std(np.array(self.weight_history)):.2f} != 0')
+                self.weight_history = self.weight_history[-10:]
+
+        if not self.zeroed and not self.check_tare and w < 0:
+            self.zeroed = True
+
+        if self.zeroed and 10 < w < 45:
+            self.weight_history.append(w)
+            if len(self.weight_history) > 25 and np.std(np.array(self.weight_history)) < .5:
+                self.weight = np.median(np.array(self.weight_history))
+                print(f'final weight: {self.weight}')
+                self.end()
+            if len(self.weight_history) > 30:
+                print(
+                    f'{np.mean(np.array(self.weight_history)):.2f} + or - {np.std(np.array(self.weight_history)):.2f}')
+                self.weight_history = self.weight_history[-30:]
+        t_remaining = .1 - (time.time() - tic)
+        if t_remaining > 0:
+            self._job = self.root.after(round(t_remaining * 1000), self.weigh_logic)
+        else:
+            self._job = self.root.after(5, self.weigh_logic)
+
+    def weigh_one(self):
         self.cleanse()
-        zeroed = False
-        weight_history = []
-        with serial.Serial(self.port, self.BAUD, self.BYTE_SIZE, self.PARITY, self.STOP_BITS) as ser:
-            while True:
-                tic = time.time()
-                w = self.get_weight(ser)
+        self._job = self.root.after(10, self.weigh_logic)
+        self.root.mainloop()
+        self.root.destroy()
+        if self.canceled:
+            self.canceled = False
+            return 'canceled'
+        else:
+            return self.weight
 
-                if not zeroed and -.2 < w < .2 and check_tare:
-                    weight_history.append(w)
-                    if len(weight_history) > 8 and np.std(np.array(weight_history)) < .1 and abs(
-                            np.mean(np.array(weight_history))) < .1:
-                        zeroed = True
-                        weight_history = []
-                    if len(weight_history) > 10:
-                        print(f'{np.mean(np.array(weight_history)):.2f} +- {np.std(np.array(weight_history)):.2f} != 0')
-                        weight_history = weight_history[-10:]
+    def end(self):
+        self.ser.close()
+        if self._job is not None:
+            self.root.after_cancel(self._job)
+            self._job = None
+        self.root.quit()
 
-                if not zeroed and not check_tare and w < 0:
-                    zeroed = True
+    def cancel(self):
+        self.canceled = True
+        self.end()
 
-                if zeroed and 15 < w < 45:
-                    weight_history.append(w)
-                    if len(weight_history) > 25 and np.std(np.array(weight_history)) < .5:
-                        weight = np.median(np.array(weight_history))
-                        print(f'final weight: {weight}')
-                        break
-                    if len(weight_history) > 30:
-                        print(f'{np.mean(np.array(weight_history)):.2f} + or - {np.std(np.array(weight_history)):.2f}')
-                        weight_history = weight_history[-30:]
-                t_remaining = .1 - (time.time() - tic)
-                if t_remaining > 0:
-                    time.sleep(t_remaining)
-                # print(f'loop time: {time.time()-tic:.2f}')
 
-        return weight
+#     def weigh_one(self, check_tare=True):
+#         stop_event = Event()
+#         t1 = Thread(target=self.cancel_button, args=[stop_event])
+#         # t1.setDaemon(True)
+#         t1.start()
+#         self.cleanse()
+#         zeroed = False
+#         weight_history = []
+#         with serial.Serial(self.port, self.BAUD, self.BYTE_SIZE, self.PARITY, self.STOP_BITS) as ser:
+#             while True:
+#                 tic = time.time()
+#                 if self.cancel:
+#                     break
+#                 w = self.get_weight(ser)
+#
+#                 if not zeroed and -.2 < w < .2 and check_tare:
+#                     weight_history.append(w)
+#                     if len(weight_history) > 8 and np.std(np.array(weight_history)) < .1 and abs(
+#                             np.mean(np.array(weight_history))) < .1:
+#                         zeroed = True
+#                         weight_history = []
+#                     if len(weight_history) > 10:
+#                         print(f'{np.mean(np.array(weight_history)):.2f} +- {np.std(np.array(weight_history)):.2f} != 0')
+#                         weight_history = weight_history[-10:]
+#
+#                 if not zeroed and not check_tare and w < 0:
+#                     zeroed = True
+#
+#                 if zeroed and 15 < w < 45:
+#                     weight_history.append(w)
+#                     if len(weight_history) > 25 and np.std(np.array(weight_history)) < .5:
+#                         weight = np.median(np.array(weight_history))
+#                         print(f'final weight: {weight}')
+#                         break
+#                     if len(weight_history) > 30:
+#                         print(f'{np.mean(np.array(weight_history)):.2f} + or - {np.std(np.array(weight_history)):.2f}')
+#                         weight_history = weight_history[-30:]
+#                 t_remaining = .1 - (time.time() - tic)
+#                 if t_remaining > 0:
+#                     time.sleep(t_remaining)
+#                 # print(f'loop time: {time.time()-tic:.2f}')
+#         stop_event.set()
+#         print('left over thread?')
+#         print(t1.is_alive())
+#         if self.cancel:
+#             self.cancel = False
+#             return 'canceled'
+#         else:
+#             return weight
+#
+#     def cancel_button(self, stop_event):
+#         self.app = CancelButton(self, stop_event)
+#
+#
+# class CancelButton:
+#     def __init__(self, scale_instance, stop_event):
+#         self.root = tk.Tk()
+#         self.root.geometry("300x200+2500+25")
+#         self.root.title('Cancel Button')
+#         self.scale_instance = scale_instance
+#         self.stop_event = stop_event
+#         self.button = tk.Button(
+#             master=self.root,
+#             text='Cancel\nWeighing',
+#             width=50,
+#             height=10,
+#             bg="white",
+#             fg="black",
+#             font=("Arial", 25),
+#             command=self.stop)
+#         self.button.pack()
+#         self._job = self.root.after(1000, self.check_continue)
+#         self.root.mainloop()
+#
+#     def stop(self):
+#         self.scale_instance.cancel = True
+#         if self._job is not None:
+#             self.root.after_cancel(self._job)
+#             self._job = None
+#         self.root.destroy()
+#
+#     def check_continue(self):
+#         if self.stop_event.is_set():
+#             if self._job is not None:
+#                 self.root.after_cancel(self._job)
+#                 self._job = None
+#             self.root.destroy()
+#         else:
+#             self._job = self.root.after(1000, self.check_continue)
 
 
 def test_scale2():
@@ -314,40 +441,60 @@ def make_display(frame):
 class App:
     def __init__(self, master=None):
         self.root = tk.Tk()
-        self.root.geometry('400x700')
+        self.root.geometry('500x1000+1950+25')
         self.root.title('Weights Gui')
         self.font = font.Font(size=15)
         self.log = load_log()
+        self.today = str(date.today())
 
         # Frame.__init__(self, master)
         # self.master = master
         self.mice = get_active_mice()
         self.mouse_names = [item for sublist in self.mice for item in sublist]
-        self.button_list = []
-        self.functions = [partial(self.record_weight, i) for i in range(len(self.mouse_names))]
+
+        self.from_here_button_list = []
+        self.from_here_functions = [partial(self.weigh_all, i) for i in range(len(self.mouse_names))]
         self.root.rowconfigure(0, weight=1, minsize=50)
-        self.root.columnconfigure(0, weight=1, minsize=75)
+        self.root.columnconfigure(0, weight=1, minsize=5)
         button_i = 1
         for i, cage in enumerate(self.mice):
             for j, mouse in enumerate(cage):
-                self.root.rowconfigure(button_i, weight=1, minsize=50)
+                self.root.rowconfigure(button_i, weight=1, minsize=30)
                 frame = tk.Frame(master=self.root, borderwidth=1)
                 frame.grid(row=button_i, column=0, sticky="nsew")
+                button = make_button(frame, self.from_here_functions[button_i - 1], '\\/', 'lightgray', self.font)
+                button.pack(fill=tk.BOTH, expand=True)
+                self.from_here_button_list.append(button)
+                button_i += 1
+
+        self.button_list = []
+        self.functions = [partial(self.record_weight, i) for i in range(len(self.mouse_names))]
+        self.root.rowconfigure(0, weight=1, minsize=50)
+        self.root.columnconfigure(1, weight=10, minsize=75)
+        button_i = 1
+        for i, cage in enumerate(self.mice):
+            for j, mouse in enumerate(cage):
+                self.root.rowconfigure(button_i, weight=1, minsize=30)
+                frame = tk.Frame(master=self.root, borderwidth=1)
+                frame.grid(row=button_i, column=1, sticky="nsew")
                 button = make_button(frame, self.functions[button_i - 1], mouse, pastel_colors[i], self.font)
                 button.pack(fill=tk.BOTH, expand=True)
                 self.button_list.append(button)
                 button_i += 1
-        self.root.rowconfigure(button_i, weight=1, minsize=50)
+        self.root.rowconfigure(button_i, weight=1, minsize=30)
         frame = tk.Frame(master=self.root, borderwidth=1)
-        frame.grid(row=button_i, column=0, sticky="nsew")
-        button = make_button(frame, self.weigh_all, 'Weigh All', 'white', self.font)
+        frame.grid(row=button_i, column=1, sticky="nsew")
+        button = make_button(frame, partial(self.weigh_all, 0), 'Weigh All', 'white', self.font)
         button.pack(fill=tk.BOTH, expand=True)
 
         self.weight_label_list = []
-        self.root.columnconfigure(1, weight=1, minsize=75)
+        self.root.columnconfigure(2, weight=4, minsize=75)
         for i in range(len(self.mouse_names)):
+            if self.mouse_names[i] not in self.log.keys():
+                self.log[self.mouse_names[i]] = {}
+
             frame = tk.Frame(master=self.root, borderwidth=1)
-            frame.grid(row=i + 1, column=1, sticky="nsew")
+            frame.grid(row=i + 1, column=2, sticky="nsew")
             label = make_display(frame)
             label.pack(fill=tk.BOTH, expand=True)
             today = self.get_today(self.mouse_names[i])
@@ -359,10 +506,10 @@ class App:
             self.weight_label_list.append(label)
 
         self.percent_label_list = []
-        self.root.columnconfigure(2, weight=1, minsize=75)
+        self.root.columnconfigure(3, weight=4, minsize=75)
         for i in range(len(self.mouse_names)):
             frame = tk.Frame(master=self.root, borderwidth=1)
-            frame.grid(row=i + 1, column=2, sticky="nsew")
+            frame.grid(row=i + 1, column=3, sticky="nsew")
             label = make_display(frame)
             label.pack(fill=tk.BOTH, expand=True)
             percent = self.get_percent(self.mouse_names[i])
@@ -377,35 +524,56 @@ class App:
         headers = ['Mouse', 'Weight', 'Percent']
         for i, header in enumerate(headers):
             frame = tk.Frame(master=self.root, borderwidth=1)
-            frame.grid(row=0, column=i, sticky="nsew")
+            frame.grid(row=0, column=i + 1, sticky="nsew")
             label = make_display(frame)
             label.pack(fill=tk.BOTH, expand=True)
             label.configure(text=header, fg='black')
-
+        self._job = self.root.after(int(28000e3), self.update_all)
         self.root.mainloop()
 
-    def record_weight(self, button_i, check_tare=True):
+    def update_all(self):
+        if self.today != str(date.today()):
+            self.today = str(date.today())
+            for label in self.weight_label_list:
+                label.configure(fg='gray')
+            self.button_list[0].update()
+            self._job = self.root.after(int(80000e3), self.update_all)
+        else:
+            self._job = self.root.after(int(3600e3), self.update_all)
+
+    def record_weight(self, button_i, check_tare=False):
         today = get_today_string()
         print(self.mouse_names[button_i])
-        scale = Scale()
-        weight = scale.weigh_one(check_tare=check_tare)
-        if today in self.log[self.mouse_names[button_i]].keys():
-            self.log[self.mouse_names[button_i]][today].append(weight)
-        else:
-            self.log[self.mouse_names[button_i]][today] = [weight]
-        save_log(self.log)
-        self.update_display(button_i)
+        scale = Scale(check_tare=check_tare)
+        weight = scale.weigh_one()
+        if weight != 'canceled' and weight is not None:
+            if today in self.log[self.mouse_names[button_i]].keys():
+                self.log[self.mouse_names[button_i]][today].append(weight)
+            else:
+                self.log[self.mouse_names[button_i]][today] = [weight]
+            save_log(self.log)
+            self.update_display(button_i)
+        return weight
 
-    def weigh_all(self):
+    def weigh_all(self, start=0):
         k = 0
+        result = ''
         for i, cage in enumerate(self.mice):
             for _ in cage:
+                if k < start:
+                    k += 1
+                    continue
                 self.button_list[k].configure(bg='blue')
                 self.button_list[0].update()
-                self.record_weight(k, check_tare=k == 0)
+                result = self.record_weight(k, check_tare=k == start)
                 self.button_list[k].configure(bg=pastel_colors[i])
                 self.button_list[0].update()
                 k += 1
+                if result == 'canceled' or result is None:
+                    break
+            if result == 'canceled' or result is None:
+                print('Weighing canceled')
+                break
 
     def update_display(self, i):
         today = self.get_today(self.mouse_names[i])

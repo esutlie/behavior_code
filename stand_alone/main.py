@@ -4,36 +4,36 @@ from timescapes import *
 import random
 
 
-def give_up(session, reward_level, peak_time, session_length):
-    print(reward_level)
-    print(peak_time)
-    print(session_length)
-    exp_dist = {'distribution': lin_over_ex,
-                'cumulative': reward_level,
-                'peak_time': peak_time}
-    port_1 = Port(1, dist_info=exp_dist)
-    port_2 = Port(2, dist_info=exp_dist)
-    ports = [port_1, port_2]
-    task1 = Task(session, name='give_up', structure=give_up_task, ports=ports, maximum=session_length, limit='time')
-    session.start([task1])
+# def give_up(session, reward_level, peak_time, session_length):
+#     print(reward_level)
+#     print(peak_time)
+#     print(session_length)
+#     exp_dist = {'distribution': lin_over_ex,
+#                 'cumulative': reward_level,
+#                 'peak_time': peak_time}
+#     port_1 = Port(1, dist_info=exp_dist)
+#     port_2 = Port(2, dist_info=exp_dist)
+#     ports = [port_1, port_2]
+#     task1 = Task(session, name='give_up', structure=give_up_task, ports=ports, maximum=session_length, limit='time')
+#     session.start([task1])
 
 
-def give_up_forgo(session, reward_level, starting_prob, session_length, fixed_times):
-    print(reward_level)
-    print(starting_prob)
-    print(session_length)
-    exp_dist = {'distribution': exp_decreasing,
-                'cumulative': reward_level,
-                'staring_probability': starting_prob}
-    background_dist = {'distribution': fixed_single,
-                       'delays': fixed_times}
-    dists = [exp_dist, background_dist]
-    # dists = [background_dist, exp_dist]
-    port_1 = Port(1, dist_info=dists[0])
-    port_2 = Port(2, dist_info=dists[1])
-    task1 = Task(session, name='give_up_forgo', structure=give_up_forgo_task, ports=[port_1, port_2],
-                 maximum=session_length, limit='time')
-    session.start([task1])
+# def give_up_forgo(session, reward_level, starting_prob, session_length, fixed_times):
+#     print(reward_level)
+#     print(starting_prob)
+#     print(session_length)
+#     exp_dist = {'distribution': exp_decreasing,
+#                 'cumulative': reward_level,
+#                 'staring_probability': starting_prob}
+#     background_dist = {'distribution': fixed_single,
+#                        'delays': fixed_times}
+#     dists = [exp_dist, background_dist]
+#     # dists = [background_dist, exp_dist]
+#     port_1 = Port(1, dist_info=dists[0])
+#     port_2 = Port(2, dist_info=dists[1])
+#     task1 = Task(session, name='give_up_forgo', structure=give_up_forgo_task, ports=[port_1, port_2],
+#                  maximum=session_length, limit='time')
+#     session.start([task1])
 
 
 def cued_forgo(session, reward_level, starting_prob, session_length, forgo=False, forced_trials=True):
@@ -73,7 +73,7 @@ def cued_forgo(session, reward_level, starting_prob, session_length, forgo=False
 
 
 def single_reward(session, reward_level, starting_prob, session_length, forgo=False, forced_trials=True):
-    reward_level = 0.5994974874371859  # cumulative for and 8 reward version
+    reward_level = 0.5994974874371859  # cumulative for an 8 reward version
     starting_prob = 0.1301005025125628
     print(reward_level)
     print(starting_prob)
@@ -100,26 +100,26 @@ def single_reward(session, reward_level, starting_prob, session_length, forgo=Fa
                  maximum=session_length, limit='time')
     session.start([task1])
 
-def give_up_blocked(session, reward_level, starting_prob, session_length, forgo=True, forced_trials=False):
-    task_structure = give_up_blocked_task
-    task_name = 'give_up_blocked'
-
-    blocks = ['hi_hi', 'hi_lo', 'lo_hi', 'lo_lo']
-    # order = [1, 0, 2, 3]
-    # blocks = [blocks[i] for i in order]
-    random.shuffle(blocks)
-    print(blocks)
-    exp_dist = {'distribution': exp_decreasing,
-                'blocks': blocks,
-                'cumulative': 4,
-                'starting': 1,
-                'hi': 1,
-                'lo': .8}
-    ports = {'right': Port(1, dist_info=exp_dist),
-             'left': Port(2, dist_info=exp_dist)}
-    task1 = Task(session, name=task_name, structure=task_structure, ports=ports,
-                 maximum=session_length, limit='time', forgo=forgo, forced_trials=forced_trials)
-    session.start([task1])
+# def give_up_blocked(session, reward_level, starting_prob, session_length, forgo=True, forced_trials=False):
+#     task_structure = give_up_blocked_task
+#     task_name = 'give_up_blocked'
+#
+#     blocks = ['hi_hi', 'hi_lo', 'lo_hi', 'lo_lo']
+#     # order = [1, 0, 2, 3]
+#     # blocks = [blocks[i] for i in order]
+#     random.shuffle(blocks)
+#     print(blocks)
+#     exp_dist = {'distribution': exp_decreasing,
+#                 'blocks': blocks,
+#                 'cumulative': 4,
+#                 'starting': 1,
+#                 'hi': 1,
+#                 'lo': .8}
+#     ports = {'right': Port(1, dist_info=exp_dist),
+#              'left': Port(2, dist_info=exp_dist)}
+#     task1 = Task(session, name=task_name, structure=task_structure, ports=ports,
+#                  maximum=session_length, limit='time', forgo=forgo, forced_trials=forced_trials)
+#     session.start([task1])
 
 
 def main(mouse, to_run, forgo=False, forced_trials=False):

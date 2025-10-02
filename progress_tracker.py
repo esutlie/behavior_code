@@ -101,7 +101,7 @@ def run_gui():
     root = Tk()
     app = App(root)
     root.wm_title("Tracker")
-    root.geometry("300x400")
+    root.geometry("300x400+2500+300")
     root.after(10000, app.update)
     root.mainloop()
 

@@ -6,142 +6,142 @@ import tkinter.font as font
 from threading import Thread
 import datetime
 
+#
+# def give_up_task(task_shell, step_size=.1):
+#     num_ports = 2  # The number of ports used in the task, do not change
+#     task_shell.check_number_of_ports(num_ports)
+#
+#     current_port = None
+#     previous_reward_check = 0
+#     licked = True
+#
+#     # This loops until all the trials are complete
+#     while task_shell.condition():
+#         task_shell.sol_cleanup()
+#         task_shell.check_time()
+#
+#         # This controls the task flow as the mouse moves in and out of ports
+#         for port in task_shell.ports:
+#             for change, event in zip([port.head_status_change(), port.lick_status_change()], ['head', 'lick']):
+#                 if change == 1:
+#                     if event == 'head':
+#                         task_shell.phase = 'consume'
+#                         print(str(time.time() - task_shell.task_start_time) + ' port ' + str(port.name) + ' entry')
+#                         if not current_port:
+#                             task_shell.trial_number = 1
+#                             task_shell.start_trial()
+#                         elif port.name != current_port:
+#                             task_shell.next_trial(end_port_name=current_port, start_port_name=port.name)
+#                             if not task_shell.condition():
+#                                 licked = False
+#                                 break
+#                             previous_reward_check = 0
+#                             licked = True
+#                         current_port = port.name
+#                     if event == 'lick':
+#                         licked = True
+#                     task_shell.log(port.name, 1, event)
+#                 elif change == -1:
+#                     if event == 'head':
+#                         task_shell.phase = 'transit'
+#                     task_shell.log(port.name, 0, event)
+#
+#         # This controls reward delivery
+#         for port in task_shell.ports:
+#             if port.head_status == 1 and licked:
+#                 trial_time = time.time() - task_shell.trial_start_time
+#                 if trial_time > previous_reward_check + step_size:
+#                     previous_reward_check = trial_time
+#                     density_function = port.dist_info['distribution']
+#                     prob = density_function(trial_time, port.dist_info['cumulative'],
+#                                             port.dist_info['peak_time']) * step_size
+#                     task_shell.log(port.name, prob, 'probability')
+#                     print_string = 'port ' + str(port.name) + ' P(reward) = ' + str(prob)
+#                     if prob > random.random():
+#                         port.sol_on()
+#                         licked = False
+#                         task_shell.log(port.name, 1, 'reward')
+#                         print(print_string + ' (rewarded)')
+#                         task_shell.reward_count += 1
 
-def give_up_task(task_shell, step_size=.1):
-    num_ports = 2  # The number of ports used in the task, do not change
-    task_shell.check_number_of_ports(num_ports)
-
-    current_port = None
-    previous_reward_check = 0
-    licked = True
-
-    # This loops until all the trials are complete
-    while task_shell.condition():
-        task_shell.sol_cleanup()
-        task_shell.check_time()
-
-        # This controls the task flow as the mouse moves in and out of ports
-        for port in task_shell.ports:
-            for change, event in zip([port.head_status_change(), port.lick_status_change()], ['head', 'lick']):
-                if change == 1:
-                    if event == 'head':
-                        task_shell.phase = 'consume'
-                        print(str(time.time() - task_shell.task_start_time) + ' port ' + str(port.name) + ' entry')
-                        if not current_port:
-                            task_shell.trial_number = 1
-                            task_shell.start_trial()
-                        elif port.name != current_port:
-                            task_shell.next_trial(end_port_name=current_port, start_port_name=port.name)
-                            if not task_shell.condition():
-                                licked = False
-                                break
-                            previous_reward_check = 0
-                            licked = True
-                        current_port = port.name
-                    if event == 'lick':
-                        licked = True
-                    task_shell.log(port.name, 1, event)
-                elif change == -1:
-                    if event == 'head':
-                        task_shell.phase = 'transit'
-                    task_shell.log(port.name, 0, event)
-
-        # This controls reward delivery
-        for port in task_shell.ports:
-            if port.head_status == 1 and licked:
-                trial_time = time.time() - task_shell.trial_start_time
-                if trial_time > previous_reward_check + step_size:
-                    previous_reward_check = trial_time
-                    density_function = port.dist_info['distribution']
-                    prob = density_function(trial_time, port.dist_info['cumulative'],
-                                            port.dist_info['peak_time']) * step_size
-                    task_shell.log(port.name, prob, 'probability')
-                    print_string = 'port ' + str(port.name) + ' P(reward) = ' + str(prob)
-                    if prob > random.random():
-                        port.sol_on()
-                        licked = False
-                        task_shell.log(port.name, 1, 'reward')
-                        print(print_string + ' (rewarded)')
-                        task_shell.reward_count += 1
-
-
-def give_up_forgo_task(task_shell, step_size=.1):
-    num_ports = 2  # The number of ports used in the task, do not change
-    task_shell.check_number_of_ports(num_ports)
-
-    current_port = None
-    previous_reward_check = 0
-    licked = True
-    fixed_port_rewarded = False
-
-    # This loops until all the trials are complete
-    while task_shell.condition():
-        task_shell.sol_cleanup()
-        task_shell.check_time()
-
-        # This controls the task flow as the mouse moves in and out of ports
-        for port in task_shell.ports:
-            for change, event in zip([port.head_status_change(), port.lick_status_change()], ['head', 'lick']):
-                if change == 1:
-                    if event == 'head':
-                        task_shell.phase = 'consume'
-                        print(str(time.time() - task_shell.task_start_time) + ' port ' + str(port.name) + ' entry')
-                        if not current_port:
-                            task_shell.trial_number = 1
-                            task_shell.start_trial(port_name=port.name)
-                        elif port.name != current_port:
-                            task_shell.next_trial(end_port_name=current_port, start_port_name=port.name)
-                            if not task_shell.condition():
-                                licked = False
-                                break
-                            previous_reward_check = 0
-                            licked = True
-                            fixed_port_rewarded = False
-                        current_port = port.name
-                    if event == 'lick':
-                        licked = True
-                        # print('lick start')
-                    task_shell.log(port.name, 1, event)
-                elif change == -1:
-                    if event == 'head':
-                        task_shell.phase = 'transit'
-                    # if event == 'lick':
-                    #     print('lick stop')
-                    task_shell.log(port.name, 0, event)
-
-        # This controls reward delivery
-        for port in task_shell.ports:
-            if port.name == current_port:
-                if port.distribution == fixed_single:
-                    if port.head_status == 1:
-                        phase = int((time.time() - task_shell.task_start_time) //
-                                    (task_shell.max_time / len(port.dist_args)))
-                        if not task_shell.condition():
-                            break
-                        wait_time = port.dist_args[phase]
-                        trial_time = time.time() - task_shell.trial_start_time
-                        if trial_time > wait_time and not fixed_port_rewarded:
-                            port.sol_on()
-                            task_shell.log(port.name, 1, 'reward')
-                            print('trial: %i port: %i fixed reward at %f seconds' % (
-                                task_shell.trial_number, port.name, trial_time))
-                            fixed_port_rewarded = True
-                            task_shell.reward_count += 1
-                elif port.distribution == exp_decreasing:
-                    if port.head_status == 1 and licked:
-                        trial_time = time.time() - task_shell.trial_start_time
-                        if trial_time > previous_reward_check + step_size:
-                            previous_reward_check = trial_time
-                            prob = port.get_prob(trial_time) * step_size
-                            task_shell.log(port.name, prob, 'probability')
-                            print_string = 'port ' + str(port.name) + ' P(reward) = ' + str(prob)
-                            if prob > random.random():
-                                port.sol_on()
-                                licked = False
-                                task_shell.log(port.name, 1, 'reward')
-                                print(print_string + ' (rewarded)')
-                                task_shell.reward_count += 1
-
+#
+# def give_up_forgo_task(task_shell, step_size=.1):
+#     num_ports = 2  # The number of ports used in the task, do not change
+#     task_shell.check_number_of_ports(num_ports)
+#
+#     current_port = None
+#     previous_reward_check = 0
+#     licked = True
+#     fixed_port_rewarded = False
+#
+#     # This loops until all the trials are complete
+#     while task_shell.condition():
+#         task_shell.sol_cleanup()
+#         task_shell.check_time()
+#
+#         # This controls the task flow as the mouse moves in and out of ports
+#         for port in task_shell.ports:
+#             for change, event in zip([port.head_status_change(), port.lick_status_change()], ['head', 'lick']):
+#                 if change == 1:
+#                     if event == 'head':
+#                         task_shell.phase = 'consume'
+#                         print(str(time.time() - task_shell.task_start_time) + ' port ' + str(port.name) + ' entry')
+#                         if not current_port:
+#                             task_shell.trial_number = 1
+#                             task_shell.start_trial(port_name=port.name)
+#                         elif port.name != current_port:
+#                             task_shell.next_trial(end_port_name=current_port, start_port_name=port.name)
+#                             if not task_shell.condition():
+#                                 licked = False
+#                                 break
+#                             previous_reward_check = 0
+#                             licked = True
+#                             fixed_port_rewarded = False
+#                         current_port = port.name
+#                     if event == 'lick':
+#                         licked = True
+#                         # print('lick start')
+#                     task_shell.log(port.name, 1, event)
+#                 elif change == -1:
+#                     if event == 'head':
+#                         task_shell.phase = 'transit'
+#                     # if event == 'lick':
+#                     #     print('lick stop')
+#                     task_shell.log(port.name, 0, event)
+#
+#         # This controls reward delivery
+#         for port in task_shell.ports:
+#             if port.name == current_port:
+#                 if port.distribution == fixed_single:
+#                     if port.head_status == 1:
+#                         phase = int((time.time() - task_shell.task_start_time) //
+#                                     (task_shell.max_time / len(port.dist_args)))
+#                         if not task_shell.condition():
+#                             break
+#                         wait_time = port.dist_args[phase]
+#                         trial_time = time.time() - task_shell.trial_start_time
+#                         if trial_time > wait_time and not fixed_port_rewarded:
+#                             port.sol_on()
+#                             task_shell.log(port.name, 1, 'reward')
+#                             print('trial: %i port: %i fixed reward at %f seconds' % (
+#                                 task_shell.trial_number, port.name, trial_time))
+#                             fixed_port_rewarded = True
+#                             task_shell.reward_count += 1
+#                 elif port.distribution == exp_decreasing:
+#                     if port.head_status == 1 and licked:
+#                         trial_time = time.time() - task_shell.trial_start_time
+#                         if trial_time > previous_reward_check + step_size:
+#                             previous_reward_check = trial_time
+#                             prob = port.get_prob(trial_time) * step_size
+#                             task_shell.log(port.name, prob, 'probability')
+#                             print_string = 'port ' + str(port.name) + ' P(reward) = ' + str(prob)
+#                             if prob > random.random():
+#                                 port.sol_on()
+#                                 licked = False
+#                                 task_shell.log(port.name, 1, 'reward')
+#                                 print(print_string + ' (rewarded)')
+#                                 task_shell.reward_count += 1
+#
 
 # def training_cued_forgo_task(task_shell, step_size=.1):
 #     num_ports = 2  # The number of ports used in the task, do not change

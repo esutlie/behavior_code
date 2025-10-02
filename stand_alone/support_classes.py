@@ -13,6 +13,7 @@ from user_settings import get_user_info
 
 info_dict = get_user_info()
 
+
 class Error(Exception):
     """Base class for other exceptions"""
     pass
@@ -349,6 +350,7 @@ class Task:
         self.forced_trials = forced_trials
         self.frame_rate = 25  # frames per second
         self.frame_interval = 1 / self.frame_rate
+        self.flux_frame_interval = (np.random.random() * .2 + .9) * self.frame_interval
         self.last_frame = time.time()
         self.cam_high = False
         self.early_stop = False
@@ -478,16 +480,18 @@ class Task:
             print('%i rewards in %s' % (
                 int(self.reward_count), str(datetime.timedelta(seconds=task_time))[2:7]))
             self.last_report = time.time()
-        if (time.time() - self.last_frame) > self.frame_interval:  # If the square wave period has passed, go high
+        if (time.time() - self.last_frame) > self.flux_frame_interval:  # If the square wave period has passed, go high
             GPIO.output(self.session.camera_pin, GPIO.HIGH)
             self.last_frame = time.time()
             self.cam_high = True
             self.log('nan', 1, 'camera')
+            self.flux_frame_interval = (np.random.random() * .2 + .9) * self.frame_interval  # Added flux to the frame interval for the second set of sessions on 5/7/24 and beyond
         # If half the period has passed and it's high, go low
-        if (time.time() - self.last_frame) > self.frame_interval / 2 and self.cam_high:
+        if (time.time() - self.last_frame) > self.flux_frame_interval / 2 and self.cam_high:
             GPIO.output(self.session.camera_pin, GPIO.LOW)
             self.cam_high = False
             self.log('nan', 0, 'camera')
+            self.flux_frame_interval = (np.random.random() * .2 + .9) * self.frame_interval
 
 
 class Expander:
