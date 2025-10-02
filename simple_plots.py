@@ -875,8 +875,8 @@ if __name__ == '__main__':
     # mice = ['SZ055', 'SZ056', 'SZ057', 'SZ058', 'SZ059']
     # mice = ['SZ036','SZ037','SZ038','SZ039','SZ041','SZ042','SZ043','SZ050','SZ051','SZ052','SZ055'] # all multi-reward mice
     # mice = ['SZ044', 'SZ045', 'SZ046', 'SZ047', 'SZ048', 'SZ053', 'SZ054', 'SZ058', 'SZ059'] # all single-reward mice
-    mice = ['SZ036', 'SZ037', 'SZ038', 'SZ039', 'SZ042', 'SZ043']
+    mice = ['SZ036', 'SZ037', 'SZ038', 'SZ039', 'SZ042', 'SZ043', 'RK007', 'RK008', 'RK009', 'RK010']
     # single_session(mice)
-    simple_plots(mice, date_selected_by='range', start_date='2023-11-28', end_date='2024-01-15')
-    mice = ['RK001', 'RK003', 'RK005', 'RK006']
-    simple_plots(mice, date_selected_by='range', start_date='2025-04-21', end_date='2025-05-10')
+    simple_plots(mice, date_selected_by='days_back')
+    # mice = ['RK007', 'RK008', 'RK009', 'RK010']
+    # simple_plots(mice, date_selected_by='range', start_date='2025-05-01', end_date='2025-05-24')

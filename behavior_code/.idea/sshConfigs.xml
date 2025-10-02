@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="SshConfigs">
+    <configs>
+      <sshConfig authType="PASSWORD" connectionConfig="{&quot;serverAliveInterval&quot;:300}" host="elissapi" id="3d6af8d1-8241-46f9-9fee-5d23361c2c38" port="22" customName="pi@elissapi" nameFormat="CUSTOM">
+        <option name="customName" value="pi@elissapi" />
+      </sshConfig>
+    </configs>
+  </component>
+</project>
