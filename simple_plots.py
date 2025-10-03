@@ -758,47 +758,47 @@ def simple_plots(select_mouse=None, date_selected_by='days_back', **kwargs):
             add_h_lines(data=block_leaves.reset_index(), x='session', y='leave time', hue='block', ax=axes[0, 0],
                         palette='Set2')
             sns.lineplot(data=consumption.reset_index(), x='session', y='consumption time', hue='port', style='port',
-                         markers=True, ax=axes[0, 1],
+                         markers=True, ax=axes[1, 0],
                          palette='Set1', estimator=np.median)
-            add_h_lines(data=consumption.reset_index(), x='session', y='consumption time', hue='port', ax=axes[0, 1],
+            add_h_lines(data=consumption.reset_index(), x='session', y='consumption time', hue='port', ax=axes[1, 0],
                         palette='Set1', estimator='median')
             sns.lineplot(data=engaged.reset_index(), x='session', y='reward rate', hue='block', style='block',
-                         markers=True, ax=axes[1, 0],
-                         palette='Set2')
-            add_h_lines(data=engaged.reset_index(), x='session', y='reward rate', hue='block', ax=axes[1, 0],
-                        palette='Set2')
-            sns.lineplot(data=engaged.reset_index(), x='session', y='percent engaged', hue='block', style='block',
                          markers=True, ax=axes[1, 1],
                          palette='Set2')
-            add_h_lines(data=engaged.reset_index(), x='session', y='percent engaged', hue='block', ax=axes[1, 1],
+            add_h_lines(data=engaged.reset_index(), x='session', y='reward rate', hue='block', ax=axes[1, 1],
                         palette='Set2')
-            sns.lineplot(data=premature_leave.reset_index(), x='session', y='premature leave rate', hue='block',
-                         style='block', markers=True, ax=axes[2, 0],
+            sns.lineplot(data=engaged.reset_index(), x='session', y='percent engaged', hue='block', style='block',
+                         markers=True, ax=axes[2, 0],
                          palette='Set2')
-            add_h_lines(data=premature_leave.reset_index(), x='session', y='premature leave rate', hue='block',
-                        ax=axes[2, 0],
+            add_h_lines(data=engaged.reset_index(), x='session', y='percent engaged', hue='block', ax=axes[2, 0],
                         palette='Set2')
+            # sns.lineplot(data=premature_leave.reset_index(), x='session', y='premature leave rate', hue='block',
+            #              style='block', markers=True, ax=axes[2, 1],
+            #              palette='Set2')
+            # add_h_lines(data=premature_leave.reset_index(), x='session', y='premature leave rate', hue='block',
+            #             ax=axes[2, 1],
+            #             palette='Set2')
             sns.lineplot(data=reentry.reset_index(), x='session', y='bg_reentry_index', hue='block', ax=axes[2, 1],
                          palette='Set2')
             add_h_lines(data=reentry.reset_index(), x='session', y='bg_reentry_index', hue='block', ax=axes[2, 1],
                         palette='Set2')
 
-            axes[2, 0].axhline(y=0.2, color='red', linestyle='--', linewidth=1.5, label='Threshold = 0.2')
-            # Add legend to show the line label
-            axes[2, 0].legend()
+            # axes[2, 0].axhline(y=0.2, color='red', linestyle='--', linewidth=1.5, label='Threshold = 0.2')
+            # # Add legend to show the line label
+            # axes[2, 0].legend()
 
             axes[0, 0].set_title('Leave Time by Block')
-            axes[0, 1].set_title('Consumption Time by Port')
-            axes[1, 0].set_title('Reward Rate by Block')
-            axes[1, 1].set_title('Percent Time Engaged by Block')
-            axes[2, 0].set_title('Premature leave from BG port by Block')
+            axes[1, 0].set_title('Consumption Time by Port')
+            axes[1, 1].set_title('Reward Rate by Block')
+            axes[2, 0].set_title('Percent Time Engaged by Block')
+            # axes[2, 1].set_title('Premature leave from BG port by Block')
             axes[2, 1].set_title('Background Reentry Index')
 
             axes[0, 0].set_ylim([0, 20])
-            axes[0, 1].set_ylim([0, 20])
-            axes[1, 0].set_ylim([0, .65])
-            axes[1, 1].set_ylim([0, 1])
+            axes[1, 0].set_ylim([0, 20])
+            axes[1, 1].set_ylim([0, .65])
             axes[2, 0].set_ylim([0, 1])
+            # axes[2, 1].set_ylim([0, 1])
             axes[2, 1].set_ylim([0.98, 3])
             plt.suptitle(mouse, fontsize=20)
             os.makedirs(save_folder, exist_ok=True)
@@ -986,5 +986,5 @@ if __name__ == '__main__':
     # single_session(mice, num_back=90)
     # simple_plots(mice, date_selected_by='days_back')
     mice = ['RK007', 'RK008', 'RK009', 'RK010']
-    single_session(mice, num_back=34)
-    # simple_plots(mice, date_selected_by='range', start_date='2025-05-01', end_date='2025-05-24')
+    # single_session(mice, num_back=34)
+    simple_plots(mice, date_selected_by='range', start_date='2025-05-01', end_date='2025-05-24')
