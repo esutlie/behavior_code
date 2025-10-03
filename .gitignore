@@ -8,6 +8,8 @@
 
 # PyCharm
 .idea/
+.iml
+.xml
 
 # Python cache
 __pycache__/
