@@ -1,4 +1,6 @@
 /data/
+/summary_graphs/
+/each_session/
 /project.avi
 /project.mp4
 # Conda environment

@@ -12,15 +12,18 @@ from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
 from labellines import labelLine, labelLines
 from user_info import get_user_info
+from backend.add_2ndry_properties_to_pi_events import add_2ndry_properties_to_pi_events
 import shutil
 from datetime import datetime
 import matplotlib as mpl
+from lifelines import KaplanMeierFitter
+from lifelines.statistics import logrank_test
 mpl.rcParams['figure.dpi'] = 300
 
 info_dict = get_user_info()
 initials = info_dict['initials']
 start_date = info_dict['start_date']
-data_dir = os.path.join('C:\\', 'Users', 'Shichen', 'OneDrive - Johns Hopkins', 'ShulerLab', 'behavior_code', 'data')
+data_dir = os.path.join('C:\\', 'Users', 'shich', 'OneDrive - Johns Hopkins', 'ShulerLab', 'behavior_code', 'data')
 
 
 def get_today_filepaths(days_back=0):
@@ -402,6 +405,103 @@ def clean_entries_exits(entries, exits):
 
     return valid_entries, valid_exits
 
+def get_bools(events):
+    head = events.key == 'head'
+    trial = events.key == 'trial'
+    cue = events.key == 'LED'
+    reward = events.key == 'reward'
+    lick = events.key == 'lick'
+    off = events.value == 0
+    on = events.value == 1
+    port1 = events.port == events.loc[events['key'] == 'exp_decreasing', 'port'].iloc[-1]
+    port2 = events.port == events.loc[events['key'] == 'background', 'port'].iloc[-1]
+    valid_head = events.is_valid
+    return [head, trial, cue, reward, lick, off, on, port1, port2, valid_head]
+
+def construct_trial_df(pi_events):
+    pi_events = add_2ndry_properties_to_pi_events(pi_events)
+    [head, trial, cue, reward, lick, off, on, port1, port2, valid_head] = get_bools(pi_events)
+    bg_entries = pi_events.loc[trial & on & valid_head, 'session_time'].to_list()
+    bg_exits = pi_events.loc[port2 & head & off & valid_head, 'session_time'].to_list()
+    exp_entries = pi_events.loc[port1 & head & on & valid_head, 'session_time'].to_list()
+    exp_exits = pi_events.loc[port1 & head & off & valid_head, 'session_time'].to_list()
+    trials = pi_events.loc[port2 & head & off & valid_head, 'trial'].to_list()
+    phase = pi_events.loc[port2 & head & off & valid_head, 'phase'].to_list()
+    rewards = [[] for _ in range(len(trials))]
+    licks = [[] for _ in range(len(trials))]
+    excess_bg_exits = [[] for _ in range(len(trials))]
+    excess_exp_entries = [[] for _ in range(len(trials))]
+    excess_exp_exits = [[] for _ in range(len(trials))]
+    for i, trial_id in enumerate(trials):
+        is_in_trial = pi_events['trial'] == trial_id
+        rewards[i] = pi_events.loc[reward & on & is_in_trial, 'session_time'].to_list()
+        licks[i] = pi_events.loc[lick & on & is_in_trial, 'session_time'].to_list()
+        excess_bg_exits[i] = pi_events.loc[
+            port2 & head & off & is_in_trial & ~valid_head, 'session_time'].to_list()
+        excess_exp_entries[i] = pi_events.loc[
+            port1 & head & on & is_in_trial & ~valid_head, 'session_time'].to_list()
+        excess_exp_exits[i] = pi_events.loc[
+            port1 & head & off & is_in_trial & ~valid_head, 'session_time'].to_list()
+    trial_df = pd.DataFrame(
+        {'trial': trials, 'phase': phase,
+         'rewards': rewards, 'licks': licks,
+         'bg_entry': bg_entries, 'bg_exit': bg_exits,
+         'exp_entry': exp_entries, 'exp_exit': exp_exits,
+         'excess_bg_exits': excess_bg_exits,
+         'excess_exp_exits': excess_exp_exits,
+         'excess_exp_entries': excess_exp_entries
+         })
+    return trial_df
+
+def plot_kaplan_meier(trial_df, session_info):
+    animal_id = session_info['mouse']
+    session_id = f"{session_info['date']}_{session_info['time']}"
+    title = f"{animal_id}:{session_id} KM Survival Curves"
+
+    trial_df['leave_time'] = trial_df['exp_exit'] - trial_df['exp_entry']
+    trial_df['event_observed'] = 1
+
+    kmf = KaplanMeierFitter()
+    ax = plt.subplot(111)
+    color_palette = sns.color_palette("Set2")
+    groups = {
+        '0.8': {'label': 'high', 'color': color_palette[1]},
+        '0.4': {'label': 'low', 'color': color_palette[0]}
+    }
+    for phase, settings in groups.items():
+        mask = trial_df['phase'] == phase
+        kmf.fit(
+            durations=trial_df.loc[mask, 'leave_time'],
+            event_observed=trial_df.loc[mask, 'event_observed'],
+            label=settings['label']
+        )
+        kmf.plot_survival_function(ax=ax, c=settings['color'])
+    plt.title(title)
+    plt.xlabel('Time from Entry (sec)')
+    plt.ylabel('Stay Probability')
+    plt.grid(True)
+    base_save_folder = save_folder = "C:\\Users\\shich\\OneDrive - Johns Hopkins\\ShulerLab\\behavior_code\\each_session"
+    save_folder = os.path.join(base_save_folder, animal_id)
+    os.makedirs(save_folder, exist_ok=True)
+    filename = f'{animal_id}_{session_id}_KM_survival.png'
+    save_path = os.path.join(save_folder, filename)
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    print(f"Graph saved to: {save_path}")
+    # plt.show()
+
+def perform_log_rank_test(trial_df):
+    trial_df['leave_time'] = trial_df['exp_exit'] - trial_df['exp_entry']
+    trial_df['event_observed'] = 1
+    # log-rank test
+    high_mask = trial_df['phase'] == '0.8'
+    low_mask = trial_df['phase'] == '0.4'
+    results = logrank_test(
+        durations_A=trial_df.loc[high_mask, 'leave_time'],
+        event_observed_A=trial_df.loc[high_mask, 'event_observed'],
+        durations_B=trial_df.loc[low_mask, 'leave_time'],
+        event_observed_B=trial_df.loc[low_mask, 'event_observed']
+    )
+    return results
 
 def percent_engaged(df):
     try:
@@ -555,7 +655,7 @@ def simple_plots(select_mouse=None, date_selected_by='days_back', **kwargs):
         list: A list of filepaths, or None if an error occurs.
     """
     plot_single_mouse_plots = True
-    save_folder = "C:\\Users\\Shichen\\OneDrive - Johns Hopkins\\ShulerLab\\behavior_code\\summary_graphs"
+    save_folder = "C:\\Users\\shich\\OneDrive - Johns Hopkins\\ShulerLab\\behavior_code\\summary_graphs"
 
     if select_mouse is None:
         dif = date.today() - start_date
@@ -738,11 +838,14 @@ def single_session(select_mouse=None, num_back=2):
         for i in range(1, num_back + 1):
             last_session = data[mouse][-i]
             last_info = info[mouse][-i]
-            session_summary(last_session, mouse, last_info)
+            trial_df = construct_trial_df(last_session)
+            plot_kaplan_meier(trial_df, last_info)
+            # perform_log_rank_test(trial_df)
+            # session_summary(last_session, mouse, last_info)
 
 
 def session_summary(data, mouse, info):
-    base_save_folder = save_folder = "C:\\Users\\Shichen\\OneDrive - Johns Hopkins\\ShulerLab\\behavior_code\\each_session"
+    base_save_folder = save_folder = "C:\\Users\\shich\\OneDrive - Johns Hopkins\\ShulerLab\\behavior_code\\each_session"
     save_folder = os.path.join(base_save_folder, mouse)
     os.makedirs(save_folder, exist_ok=True)
     fig, [ax1, ax2] = plt.subplots(1, 2, figsize=[10, 10])
@@ -875,8 +978,10 @@ if __name__ == '__main__':
     # mice = ['SZ055', 'SZ056', 'SZ057', 'SZ058', 'SZ059']
     # mice = ['SZ036','SZ037','SZ038','SZ039','SZ041','SZ042','SZ043','SZ050','SZ051','SZ052','SZ055'] # all multi-reward mice
     # mice = ['SZ044', 'SZ045', 'SZ046', 'SZ047', 'SZ048', 'SZ053', 'SZ054', 'SZ058', 'SZ059'] # all single-reward mice
-    mice = ['SZ036', 'SZ037', 'SZ038', 'SZ039', 'SZ042', 'SZ043', 'RK007', 'RK008', 'RK009', 'RK010']
-    # single_session(mice)
-    simple_plots(mice, date_selected_by='days_back')
-    # mice = ['RK007', 'RK008', 'RK009', 'RK010']
+    # mice = ['SZ036', 'SZ037', 'SZ038', 'SZ039', 'SZ042', 'SZ043', 'RK007', 'RK008', 'RK009', 'RK010']
+    mice = ['SZ036', 'SZ037', 'SZ038', 'SZ039', 'SZ042', 'SZ043']
+    single_session(mice, num_back=90)
+    # simple_plots(mice, date_selected_by='days_back')
+    mice = ['RK007', 'RK008', 'RK009', 'RK010']
+    single_session(mice, num_back=34)
     # simple_plots(mice, date_selected_by='range', start_date='2025-05-01', end_date='2025-05-24')
