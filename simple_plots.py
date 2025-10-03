@@ -462,7 +462,7 @@ def plot_kaplan_meier(trial_df, session_info):
     trial_df['event_observed'] = 1
 
     kmf = KaplanMeierFitter()
-    ax = plt.subplot(111)
+    fig, ax = plt.subplots()
     color_palette = sns.color_palette("Set2")
     groups = {
         '0.8': {'label': 'high', 'color': color_palette[1]},
@@ -487,6 +487,7 @@ def plot_kaplan_meier(trial_df, session_info):
     save_path = os.path.join(save_folder, filename)
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     print(f"Graph saved to: {save_path}")
+    plt.close(fig)
     # plt.show()
 
 def perform_log_rank_test(trial_df):
@@ -839,6 +840,8 @@ def single_session(select_mouse=None, num_back=2):
             last_session = data[mouse][-i]
             last_info = info[mouse][-i]
             trial_df = construct_trial_df(last_session)
+            if len(trial_df) <= 10:
+                continue
             plot_kaplan_meier(trial_df, last_info)
             # perform_log_rank_test(trial_df)
             # session_summary(last_session, mouse, last_info)
@@ -979,8 +982,8 @@ if __name__ == '__main__':
     # mice = ['SZ036','SZ037','SZ038','SZ039','SZ041','SZ042','SZ043','SZ050','SZ051','SZ052','SZ055'] # all multi-reward mice
     # mice = ['SZ044', 'SZ045', 'SZ046', 'SZ047', 'SZ048', 'SZ053', 'SZ054', 'SZ058', 'SZ059'] # all single-reward mice
     # mice = ['SZ036', 'SZ037', 'SZ038', 'SZ039', 'SZ042', 'SZ043', 'RK007', 'RK008', 'RK009', 'RK010']
-    mice = ['SZ036', 'SZ037', 'SZ038', 'SZ039', 'SZ042', 'SZ043']
-    single_session(mice, num_back=90)
+    # mice = ['SZ036', 'SZ037', 'SZ038', 'SZ039', 'SZ042', 'SZ043']
+    # single_session(mice, num_back=90)
     # simple_plots(mice, date_selected_by='days_back')
     mice = ['RK007', 'RK008', 'RK009', 'RK010']
     single_session(mice, num_back=34)
